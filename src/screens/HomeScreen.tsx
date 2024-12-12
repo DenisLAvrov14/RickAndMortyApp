@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
   FlatList,
-  Image,
-  StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  StyleSheet,
 } from "react-native";
+import CharacterCard from "../components/characterCard/CharacterCard";
+import ErrorView from "../components/errorView/ErrorView";
 import { fetchCharacters } from "../api/rickAndMortyApi";
 
 const HomeScreen = () => {
   const [characters, setCharacters] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
@@ -23,13 +24,16 @@ const HomeScreen = () => {
 
   const loadCharacters = async () => {
     try {
+      setError(null); 
       if (page === 1) setLoading(true);
       else setIsLoadingMore(true);
 
       const data = await fetchCharacters(page);
-      setCharacters((prev) => (page === 1 ? data.results : [...prev, ...data.results]));
-    } catch (error) {
-      console.error("Error loading characters:", error);
+      setCharacters((prev) =>
+        page === 1 ? data.results : [...prev, ...data.results]
+      );
+    } catch (err) {
+      setError("Failed to load characters. Please try again.");
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
@@ -43,33 +47,14 @@ const HomeScreen = () => {
     setRefreshing(false);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Alive":
-        return "green";
-      case "Dead":
-        return "red";
-      default:
-        return "gray";
-    }
-  };
-
-  const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <Image source={{ uri: item.image }} style={styles.image} />
-      <View>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={[styles.status, { color: getStatusColor(item.status) }]}>
-          {item.status}
-        </Text>
-      </View>
-    </View>
-  );
-
   const renderFooter = () => {
     if (!isLoadingMore) return null;
     return <ActivityIndicator style={{ marginVertical: 10 }} size="small" />;
   };
+
+  if (error) {
+    return <ErrorView message={error} onRetry={() => loadCharacters()} />;
+  }
 
   if (loading && page === 1) {
     return (
@@ -83,7 +68,7 @@ const HomeScreen = () => {
     <FlatList
       data={characters}
       keyExtractor={(item) => item.id.toString()}
-      renderItem={renderItem}
+      renderItem={({ item }) => <CharacterCard character={item} />}
       onEndReached={() => setPage((prev) => prev + 1)}
       onEndReachedThreshold={0.5}
       ListFooterComponent={renderFooter}
@@ -99,32 +84,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    marginBottom: 10,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  image: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 10,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: "bold",
   },
 });
 
